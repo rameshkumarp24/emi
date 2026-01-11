@@ -1,6 +1,8 @@
 
+
 body {
   background: #f7f7f7;
+  color: #222;
 }
 
 #root {
@@ -27,7 +29,6 @@ body {
 }
 
 .MuiTableCell-head {
-  background: #e3f2fd;
   font-weight: bold;
   font-size: 1.1rem;
 }
@@ -35,14 +36,17 @@ body {
 .MuiTableCell-root {
   font-size: 1rem;
   padding: 0.7em 1em;
+  color: #222;
 }
 
 .MuiTypography-h4, .MuiTypography-h5 {
   font-weight: 700;
+  color: #222;
 }
 
 .MuiTypography-h6 {
   font-weight: 700;
+  color: #222;
 }
 
 .PieChart {
@@ -59,4 +63,19 @@ body {
 
 .MuiDivider-root {
   margin: 1em 0;
+}
+
+/* Table header colors for EMI breakdown */
+.MuiTableCell-head:nth-child(2) { background: #8bc34a !important; color: #fff !important; }
+.MuiTableCell-head:nth-child(3) { background: #ff9800 !important; color: #fff !important; }
+.MuiTableCell-head:nth-child(4) { background: #e0e0e0 !important; color: #222 !important; }
+.MuiTableCell-head:nth-child(5) { background: #b71c50 !important; color: #fff !important; }
+.MuiTableCell-head:nth-child(6) { background: #e0e0e0 !important; color: #222 !important; }
+
+/* Alternating row backgrounds for expanded months */
+.MuiTableBody-root .MuiTableRow-root:nth-of-type(even) {
+  background: #f9f9f9;
+}
+.MuiTableBody-root .MuiTableRow-root:nth-of-type(odd) {
+  background: #f1f1f1;
 }

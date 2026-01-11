@@ -5,8 +5,9 @@ import './App.css';
 import { Chart, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import {
-  Tabs, Tab, Box, Slider, TextField, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, ToggleButton, ToggleButtonGroup, Divider
+  Tabs, Tab, Box, Slider, TextField, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, ToggleButton, ToggleButtonGroup, Divider, IconButton, Collapse
 } from '@mui/material';
+import { Add, Remove } from '@mui/icons-material';
 
 Chart.register(ArcElement, Tooltip, Legend);
 
@@ -43,57 +44,59 @@ function calculateEMI(P, r, n) {
   );
 }
 
-function getAmortizationSchedule(P, r, n, startYear, mode) {
-  // mode: 'year' or 'month'
+// Returns { years: [...], monthsByYear: { [year]: [...] } }
+function getAmortizationSchedule(P, r, n, startYear) {
   const monthlyRate = r / 12 / 100;
   const emi = calculateEMI(P, r, n);
   let balance = P;
-  let schedule = [];
+  let years = [];
+  let monthsByYear = {};
   let year = startYear;
   for (let i = 1; i <= n; i++) {
     const interest = balance * monthlyRate;
     const principal = emi - interest;
     balance -= principal;
-    if (mode === 'year') {
-      const y = year + Math.floor((i - 1) / 12);
-      if (!schedule[y]) {
-        schedule[y] = {
-          year: y,
-          principal: 0,
-          interest: 0,
-          total: 0,
-          balance: 0,
-          paidPercent: 0,
-        };
-      }
-      schedule[y].principal += principal;
-      schedule[y].interest += interest;
-      schedule[y].total += emi;
-      schedule[y].balance = Math.max(balance, 0);
-      schedule[y].paidPercent = 100 * (P - balance) / P;
-    } else {
-      // month-wise
-      const m = i;
-      schedule[m] = {
-        month: m,
-        year: year + Math.floor((i - 1) / 12),
-        principal: principal,
-        interest: interest,
-        total: emi,
-        balance: Math.max(balance, 0),
-        paidPercent: 100 * (P - balance) / P,
-      };
+    const y = year + Math.floor((i - 1) / 12);
+    const m = ((i - 1) % 12) + 1;
+    // Month row
+    if (!monthsByYear[y]) monthsByYear[y] = [];
+    monthsByYear[y].push({
+      month: m,
+      monthName: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][(m-1)%12],
+      principal: Math.round(principal),
+      interest: Math.round(interest),
+      total: Math.round(emi),
+      balance: Math.round(Math.max(balance, 0)),
+      paidPercent: ((P - balance) / P * 100).toFixed(2),
+    });
+    // Year row
+    if (!years.find(row => row.year === y)) {
+      years.push({
+        year: y,
+        principal: 0,
+        interest: 0,
+        total: 0,
+        balance: 0,
+        paidPercent: 0,
+      });
     }
+    let yr = years.find(row => row.year === y);
+    yr.principal += principal;
+    yr.interest += interest;
+    yr.total += emi;
+    yr.balance = Math.max(balance, 0);
+    yr.paidPercent = ((P - balance) / P * 100).toFixed(2);
   }
-  // Convert to array and round values
-  return Object.values(schedule).map((row) => ({
+  // Round year values
+  years = years.map(row => ({
     ...row,
     principal: Math.round(row.principal),
     interest: Math.round(row.interest),
     total: Math.round(row.total),
     balance: Math.round(row.balance),
-    paidPercent: row.paidPercent?.toFixed(2),
+    paidPercent: row.paidPercent,
   }));
+  return { years, monthsByYear };
 }
 
 function App() {
@@ -103,7 +106,7 @@ function App() {
   const [tenure, setTenure] = useState(20);
   const [tenureMode, setTenureMode] = useState('year');
   const [startYear, setStartYear] = useState(new Date().getFullYear());
-  const [scheduleMode, setScheduleMode] = useState('year');
+  const [expandedYears, setExpandedYears] = useState([]);
 
   React.useEffect(() => {
     setLoanAmount(loanTypes[tab].default);
@@ -125,11 +128,17 @@ function App() {
     ],
   };
 
-  const schedule = getAmortizationSchedule(loanAmount, interestRate, tenureMonths, startYear, scheduleMode);
+  const { years, monthsByYear } = getAmortizationSchedule(loanAmount, interestRate, tenureMonths, startYear);
+
+  const handleExpandYear = (year) => {
+    setExpandedYears((prev) =>
+      prev.includes(year) ? prev.filter((y) => y !== year) : [...prev, year]
+    );
+  };
 
   return (
-    <Box sx={{ maxWidth: 900, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 700 }}>EMI Calculator for Home Loan, Car Loan & Personal Loan in India</Typography>
+    <Box sx={{ maxWidth: 1000, mx: 'auto', p: 3 }}>
+      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 700, color: '#222' }}>EMI Calculator for Home Loan, Car Loan & Personal Loan in India</Typography>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} centered sx={{ mb: 3 }}>
         {loanTypes.map((type, idx) => (
           <Tab key={type.label} label={type.label} />
@@ -137,7 +146,7 @@ function App() {
       </Tabs>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4, mb: 4 }}>
         <Box sx={{ flex: 1, minWidth: 340, p: 3, background: '#f5faff', borderRadius: 2, boxShadow: 1 }}>
-          <Typography gutterBottom sx={{ fontWeight: 600 }}>Loan Amount</Typography>
+          <Typography gutterBottom sx={{ fontWeight: 600, color: '#222' }}>Loan Amount</Typography>
           <Slider
             min={loanTypes[tab].min}
             max={loanTypes[tab].max}
@@ -155,7 +164,7 @@ function App() {
             InputProps={{ startAdornment: <span>₹</span> }}
             sx={{ mb: 2 }}
           />
-          <Typography gutterBottom sx={{ fontWeight: 600 }}>Interest Rate (%)</Typography>
+          <Typography gutterBottom sx={{ fontWeight: 600, color: '#222' }}>Interest Rate (%)</Typography>
           <Slider
             min={5}
             max={20}
@@ -173,7 +182,7 @@ function App() {
             InputProps={{ endAdornment: <span>%</span> }}
             sx={{ mb: 2 }}
           />
-          <Typography gutterBottom sx={{ fontWeight: 600 }}>Loan Tenure</Typography>
+          <Typography gutterBottom sx={{ fontWeight: 600, color: '#222' }}>Loan Tenure</Typography>
           <ToggleButtonGroup
             value={tenureMode}
             exclusive
@@ -202,21 +211,21 @@ function App() {
           />
         </Box>
         <Box sx={{ flex: 1, minWidth: 340, p: 3, background: '#fffde7', borderRadius: 2, boxShadow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Loan EMI</Typography>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#222' }}>Loan EMI</Typography>
           <Typography variant="h3" color="primary" sx={{ fontWeight: 700 }}>₹ {emi.toLocaleString()}</Typography>
           <Divider sx={{ my: 2, width: '80%' }} />
-          <Typography sx={{ mt: 1, fontWeight: 600 }}>Total Interest Payable</Typography>
+          <Typography sx={{ mt: 1, fontWeight: 600, color: '#222' }}>Total Interest Payable</Typography>
           <Typography variant="h6" color="secondary" sx={{ fontWeight: 700 }}>₹ {totalInterest.toLocaleString()}</Typography>
-          <Typography sx={{ mt: 1, fontWeight: 600 }}>Total Payment (Principal + Interest)</Typography>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>₹ {totalPayment.toLocaleString()}</Typography>
+          <Typography sx={{ mt: 1, fontWeight: 600, color: '#222' }}>Total Payment (Principal + Interest)</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#222' }}>₹ {totalPayment.toLocaleString()}</Typography>
           <Box sx={{ mt: 3, maxWidth: 260, mx: 'auto' }}>
             <Pie data={pieData} options={{ plugins: { legend: { display: true, position: 'bottom' } } }} />
-            <Typography align="center" sx={{ mt: 1, fontWeight: 600 }}>Break-up of Total Payment</Typography>
+            <Typography align="center" sx={{ mt: 1, fontWeight: 600, color: '#222' }}>Break-up of Total Payment</Typography>
           </Box>
         </Box>
       </Box>
       <Box sx={{ mt: 5, p: 3, background: '#e3f2fd', borderRadius: 2, boxShadow: 1 }}>
-        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>Schedule showing EMI payments starting from {startYear}</Typography>
+        <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: '#222' }}>Schedule showing EMI payments starting from {startYear}</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
           <TextField
             type="number"
@@ -225,65 +234,56 @@ function App() {
             onChange={e => setStartYear(Number(e.target.value))}
             sx={{ width: 120 }}
           />
-          <ToggleButtonGroup
-            value={scheduleMode}
-            exclusive
-            onChange={(_, v) => v && setScheduleMode(v)}
-          >
-            <ToggleButton value="year">Year-wise</ToggleButton>
-            <ToggleButton value="month">Month-wise</ToggleButton>
-          </ToggleButtonGroup>
         </Box>
-        <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+        <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
-                {scheduleMode === 'year' ? (
-                  <>
-                    <TableCell>Year</TableCell>
-                    <TableCell>Principal (A)</TableCell>
-                    <TableCell>Interest (B)</TableCell>
-                    <TableCell>Total Payment (A+B)</TableCell>
-                    <TableCell>Balance</TableCell>
-                    <TableCell>Loan Paid To Date</TableCell>
-                  </>
-                ) : (
-                  <>
-                    <TableCell>Month</TableCell>
-                    <TableCell>Year</TableCell>
-                    <TableCell>Principal (A)</TableCell>
-                    <TableCell>Interest (B)</TableCell>
-                    <TableCell>Total Payment (A+B)</TableCell>
-                    <TableCell>Balance</TableCell>
-                    <TableCell>Loan Paid To Date</TableCell>
-                  </>
-                )}
+                <TableCell sx={{ background: '#f5f5f5', fontWeight: 700, color: '#222' }}></TableCell>
+                <TableCell sx={{ background: '#8bc34a', color: '#fff', fontWeight: 700 }}>Principal (A)</TableCell>
+                <TableCell sx={{ background: '#ff9800', color: '#fff', fontWeight: 700 }}>Interest (B)</TableCell>
+                <TableCell sx={{ background: '#e0e0e0', color: '#222', fontWeight: 700 }}>Total Payment (A + B)</TableCell>
+                <TableCell sx={{ background: '#b71c50', color: '#fff', fontWeight: 700 }}>Balance</TableCell>
+                <TableCell sx={{ background: '#e0e0e0', color: '#222', fontWeight: 700 }}>Loan Paid To Date</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {schedule.map((row, idx) => (
-                <TableRow key={scheduleMode === 'year' ? row.year : row.month}>
-                  {scheduleMode === 'year' ? (
-                    <>
-                      <TableCell>{row.year}</TableCell>
-                      <TableCell>₹ {row.principal.toLocaleString()}</TableCell>
-                      <TableCell>₹ {row.interest.toLocaleString()}</TableCell>
-                      <TableCell>₹ {row.total.toLocaleString()}</TableCell>
-                      <TableCell>₹ {row.balance.toLocaleString()}</TableCell>
-                      <TableCell>{row.paidPercent}%</TableCell>
-                    </>
-                  ) : (
-                    <>
-                      <TableCell>{row.month}</TableCell>
-                      <TableCell>{row.year}</TableCell>
-                      <TableCell>₹ {row.principal.toLocaleString()}</TableCell>
-                      <TableCell>₹ {row.interest.toLocaleString()}</TableCell>
-                      <TableCell>₹ {row.total.toLocaleString()}</TableCell>
-                      <TableCell>₹ {row.balance.toLocaleString()}</TableCell>
-                      <TableCell>{row.paidPercent}%</TableCell>
-                    </>
-                  )}
-                </TableRow>
+              {years.map((row) => (
+                <React.Fragment key={row.year}>
+                  <TableRow sx={{ background: '#fafafa' }}>
+                    <TableCell>
+                      <IconButton size="small" onClick={() => handleExpandYear(row.year)}>
+                        {expandedYears.includes(row.year) ? <Remove /> : <Add />}
+                      </IconButton>
+                      <b>{row.year}</b>
+                    </TableCell>
+                    <TableCell><b>₹ {row.principal.toLocaleString()}</b></TableCell>
+                    <TableCell><b>₹ {row.interest.toLocaleString()}</b></TableCell>
+                    <TableCell><b>₹ {row.total.toLocaleString()}</b></TableCell>
+                    <TableCell><b>₹ {row.balance.toLocaleString()}</b></TableCell>
+                    <TableCell><b>{row.paidPercent}%</b></TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell style={{ padding: 0, border: 0 }} colSpan={6}>
+                      <Collapse in={expandedYears.includes(row.year)} timeout="auto" unmountOnExit>
+                        <Table size="small" sx={{ background: '#fff' }}>
+                          <TableBody>
+                            {monthsByYear[row.year]?.map((m, idx) => (
+                              <TableRow key={m.monthName} sx={{ background: idx % 2 === 0 ? '#f9f9f9' : '#f1f1f1' }}>
+                                <TableCell sx={{ pl: 6, color: '#222' }}>{m.monthName}</TableCell>
+                                <TableCell sx={{ color: '#222' }}>₹ {m.principal.toLocaleString()}</TableCell>
+                                <TableCell sx={{ color: '#222' }}>₹ {m.interest.toLocaleString()}</TableCell>
+                                <TableCell sx={{ color: '#222' }}>₹ {m.total.toLocaleString()}</TableCell>
+                                <TableCell sx={{ color: '#222' }}>₹ {m.balance.toLocaleString()}</TableCell>
+                                <TableCell sx={{ color: '#222' }}>{m.paidPercent}%</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>
