@@ -1,0 +1,62 @@
+
+body {
+  background: #f7f7f7;
+}
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.MuiBox-root {
+  background: none;
+  box-shadow: none;
+}
+
+.MuiTabs-root {
+  margin-bottom: 2rem;
+}
+
+.MuiSlider-root {
+  margin-top: 1rem;
+}
+
+.MuiTableContainer-root {
+  margin-top: 1.5rem;
+}
+
+.MuiTableCell-head {
+  background: #e3f2fd;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.MuiTableCell-root {
+  font-size: 1rem;
+  padding: 0.7em 1em;
+}
+
+.MuiTypography-h4, .MuiTypography-h5 {
+  font-weight: 700;
+}
+
+.MuiTypography-h6 {
+  font-weight: 700;
+}
+
+.PieChart {
+  margin: 0 auto;
+}
+
+.MuiPaper-root {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.MuiToggleButtonGroup-root {
+  margin-bottom: 0.5em;
+}
+
+.MuiDivider-root {
+  margin: 1em 0;
+}
